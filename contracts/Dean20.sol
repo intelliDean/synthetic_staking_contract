@@ -2,15 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./IDean20.sol";
-
-
- error ZERO_ADDRESS_NOT_ALLOWED();
-    error MAXIMUM_TOKEN_SUPPLY_REACHED();
-    error INSUFFICIENT_ALLOWANCE_BALANCE();
-    error INSUFFICIENT_BALANCE();
-    error ONLY_OWNER_IS_ALLOWED();
-    error BALANCE_MORE_THAN_TOTAL_SUPPLY();
-    error CANNOT_BURN_ZERO_TOKEN();
+import "./Err.sol";
 
 contract Dean20 is IDean20 {
 
@@ -34,7 +26,7 @@ contract Dean20 is IDean20 {
 
     function initializeOwner() private {
         uint96 initialSupply = 1000000000000000000000000;
-        if (initialSupply > MAX_SUPPLY) revert MAXIMUM_TOKEN_SUPPLY_REACHED();
+        if (initialSupply > MAX_SUPPLY) revert Err.MAXIMUM_TOKEN_SUPPLY_REACHED();
 
         s_totalSupply = s_totalSupply + initialSupply;
         balances[msg.sender] = balances[msg.sender] + initialSupply;
@@ -42,7 +34,7 @@ contract Dean20 is IDean20 {
 
 
     function onlyOwner() private view {
-        if (msg.sender != s_owner) revert ONLY_OWNER_IS_ALLOWED();
+        if (msg.sender != s_owner) revert Err.ONLY_OWNER_IS_ALLOWED();
     }
 
     function name() external pure returns (string memory) {
@@ -67,8 +59,8 @@ contract Dean20 is IDean20 {
 
 
      function transfer(address _to, uint256 _value) external returns (bool success) {
-        if (_to == address(0) || msg.sender == address(0)) revert ZERO_ADDRESS_NOT_ALLOWED();
-         if (s_totalSupply < balances[msg.sender]) revert BALANCE_MORE_THAN_TOTAL_SUPPLY();
+        if (_to == address(0) || msg.sender == address(0)) revert Err.ZERO_ADDRESS_NOT_ALLOWED();
+         if (s_totalSupply < balances[msg.sender]) revert Err.BALANCE_MORE_THAN_TOTAL_SUPPLY();
         //normal transfer       //percentage deduction
         uint256 deduction = doDecimals(_value) + ((doDecimals(_value) * 10) / 100);
         //burn 10% of the amount sent as charges
@@ -81,8 +73,8 @@ contract Dean20 is IDean20 {
     }
 
     function transferFrom(address _from, address _to, uint256 _value) external returns (bool success) {
-        if (_to == address(0) || _from == address(0)) revert ZERO_ADDRESS_NOT_ALLOWED();
-        if (allowances[_from][_to] < doDecimals(_value)) revert INSUFFICIENT_ALLOWANCE_BALANCE();
+        if (_to == address(0) || _from == address(0)) revert Err.ZERO_ADDRESS_NOT_ALLOWED();
+        if (allowances[_from][_to] < doDecimals(_value)) revert Err.INSUFFICIENT_ALLOWANCE_BALANCE();
 
         uint256 deduction = doDecimals(_value) + ((doDecimals(_value) * 10) / 100);
 
@@ -97,8 +89,8 @@ contract Dean20 is IDean20 {
     }
 
     function approve(address _spender, uint256 _value) external returns (bool success) {
-        if (_spender == address(0) || msg.sender == address(0)) revert ZERO_ADDRESS_NOT_ALLOWED();
-        if (balances[msg.sender] < doDecimals(_value)) revert INSUFFICIENT_BALANCE();
+        if (_spender == address(0) || msg.sender == address(0)) revert Err.ZERO_ADDRESS_NOT_ALLOWED();
+        if (balances[msg.sender] < doDecimals(_value)) revert Err.INSUFFICIENT_BALANCE();
         allowances[msg.sender][_spender] = doDecimals(_value);
         emit Approval(msg.sender, _spender, _value);
         return true;
@@ -111,15 +103,15 @@ contract Dean20 is IDean20 {
     function mint(address _account, uint256 _amount) public {
         onlyOwner();
         uint256 tempSupply = s_totalSupply + doDecimals(_amount);
-        if (tempSupply > MAX_SUPPLY) revert MAXIMUM_TOKEN_SUPPLY_REACHED();
+        if (tempSupply > MAX_SUPPLY) revert Err.MAXIMUM_TOKEN_SUPPLY_REACHED();
 
         s_totalSupply = s_totalSupply + doDecimals(_amount);
         balances[_account] = balances[_account] + doDecimals(_amount);
     }
 
     function burn(uint96 _amount) external {
-        if (msg.sender == address(0)) revert ZERO_ADDRESS_NOT_ALLOWED();
-        if (balances[msg.sender] <= 0) revert CANNOT_BURN_ZERO_TOKEN();
+        if (msg.sender == address(0)) revert Err.ZERO_ADDRESS_NOT_ALLOWED();
+        if (balances[msg.sender] <= 0) revert Err.CANNOT_BURN_ZERO_TOKEN();
 
         balances[msg.sender] = balances[msg.sender] - doDecimals(_amount);
         s_totalSupply = s_totalSupply - doDecimals(_amount);

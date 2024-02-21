@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 // import "contracts/assignments/erc20/ERC20.sol";
 import "./IDean20.sol";
+import "./Err.sol";
 
 contract Staking {
     //the erc 20 tokens for the staking and reward
@@ -40,7 +41,7 @@ contract Staking {
     //executes first before the function is modifies execute
     //it's used to make sure only the owner of the contract can initiate this tx
     modifier onlyOwner() {
-        require(msg.sender == owner, "Not Owner");
+        if (msg.sender != owner)  revert Err.ONLY_OWNER_IS_ALLOWED();
         _;
     }
     modifier updateReward(address _account) {
@@ -57,7 +58,7 @@ contract Staking {
 
     function setRewardDuration(uint _duration) external onlyOwner {
         //to make sure the duration is not changed when the staking duration has not ended
-        require(endOfDuration < block.timestamp, "Reward duration not finished");
+        if (endOfDuration >= block.timestamp) revert Err.REWARD_DURATION_NOT_FINISHED();
 
         stakingDuration = _duration;
     }
@@ -69,14 +70,15 @@ contract Staking {
             uint remainingReward = rewardRate * (endOfDuration - block.timestamp);
             rewardRate = (remainingReward + _amount) / stakingDuration;
         }
-        require(rewardRate > 0, "Reward rate = 0");
-        require(rewardRate * stakingDuration <= rewardToken.balanceOf(address(this)), "Reward amount > balance");
+        if (rewardRate <= 0) revert Err.REWARD_RATE_IS_0();
+        if (rewardRate * stakingDuration > rewardToken.balanceOf(address(this)))
+            revert Err.REWARD_AMOUNT_GREATER_THAN_BALANCE();
         endOfDuration = block.timestamp + stakingDuration;
         updateAt = block.timestamp;
     }
 
     function stake(uint _amount) external updateReward(msg.sender) {
-        require(_amount > 0, "amount = 0");
+        if (_amount <= 0) revert Err.AMOUNT_EQUALS_ZERO();
         stakingToken.transferFrom(msg.sender, address(this), _amount);
         balanceOf[msg.sender] = balanceOf[msg.sender] + _amount;
         totalStake = totalStake + _amount;
@@ -100,7 +102,7 @@ contract Staking {
 
 
     function withdraw(uint _amount) external updateReward(msg.sender) {
-        require(_amount > 0, "amount = 0");
+        if (_amount <= 0) revert Err.AMOUNT_EQUALS_ZERO();
         balanceOf[msg.sender] = balanceOf[msg.sender] - _amount;
         totalStake = totalStake - _amount;
         stakingToken.transfer(msg.sender, _amount);
